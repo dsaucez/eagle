@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx2
+  name: ue
   labels:
     app.kubernetes.io/name: proxy
 spec:
   containers:
-  - name: nginx2
+  - name: ue
     image: dsaucez/upf
   nodeName: master-1
 ---
