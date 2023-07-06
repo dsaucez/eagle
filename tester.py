@@ -128,9 +128,9 @@ def client(server, port, interval, packetsize, destination=None):
 
 def main():
   parser = argparse.ArgumentParser()
-  parser.add_argument('-p', '--port', dest='port', action='store', required=True, type=int)
+  parser.add_argument('-p', '--port', dest='port', action='store', default=8080, type=int)
   parser.add_argument('-s', '--packetsize', dest='packetsize', action='store', type=int, default=64, choices=range(64,1500))
-  parser.add_argument('-a', '--address', dest='address', action='store')
+  parser.add_argument('-a', '--address', dest='address', default='0.0.0.0', action='store')
   parser.add_argument('-j', '--jump', dest='jump', action='store')
   parser.add_argument('-i', '--interval', dest='interval', action='store', default=1, type=float)
   group = parser.add_mutually_exclusive_group(required=True)
@@ -140,7 +140,7 @@ def main():
 
   if args.server:
     try:
-      asyncio.run(server(port=args.port))
+      asyncio.run(server(port=args.port, address=args.address))
     except KeyboardInterrupt:
       pass
 
