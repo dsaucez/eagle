@@ -1,15 +1,19 @@
+import igraph as ig
 import yaml
-import subprocess
-import time
 
-hosts = {}
-hosts[8]="192.168.64.5"
-hosts[9]="192.168.64.6"
-hosts[10]="192.168.64.7"
-hosts[11]="192.168.64.33"
-hosts[12]="192.168.64.32"
+ansible_inventory = {}
+ansible_inventory['worker0'] = "192.168.64.5"
+ansible_inventory['worker1'] = "192.168.64.6"
+ansible_inventory['worker2'] = "192.168.64.7"
+ansible_inventory['worker3'] = "192.168.64.33"
 
-sequences = [{12}, {10, 11}, {8, 9}]
+sequences = [{10, 11}, {8, 9}]
+
+G = ig.Graph.Read_GML('usecase.gml')
+
+for g in G.vs:
+  if g['name'] in ansible_inventory:
+    g['inventory_name'] = ansible_inventory[g['name']]
 
 def run_playbook(playbook, inventories=[], extras=[]):
   cmd = ['ansible-playbook']
@@ -23,13 +27,11 @@ def run_playbook(playbook, inventories=[], extras=[]):
 
   print(" ".join(cmd))
 
-begin=time.perf_counter()
-
 seq = 0
 for sequence in sequences:
   to_update = {}
-  for node in sequence:
-    to_update[hosts[node]] = None
+  for nodeid in sequence:
+    to_update[G.vs[nodeid]['inventory_name']] = {'version': G.vs[nodeid]['kubernetes']}
   
     inventory = {"all": {"children": {"update": {"hosts": to_update}}}}
   
@@ -40,6 +42,3 @@ for sequence in sequences:
 
   run_playbook(playbook='k8s-update-others.yaml', inventories=['inventories/blueprint/core/', hostfile], extras=['@params.blueprint.core.yaml', 'update_version=1.27.2'])
   seq = seq + 1
-
-end=time.perf_counter()
-print("update took {}s".format( end-begin))
