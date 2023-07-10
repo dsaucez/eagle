@@ -21,6 +21,7 @@ update_sequence = {
   '1.26.2': '1.27.2',
   '1.27.2': None
 }
+v_first,v_intermediate,v_target = tuple(sorted(update_sequence.keys()))
 
 # ###################################################################
 def _install(queue, node, version):
@@ -63,10 +64,14 @@ def _run_playbook(playbook, inventories=[], extras=[]):
 
   print(" ".join(cmd))
 
+def _dump_hostfile(hostfile, inventory):
+  with open(hostfile, 'w') as f:
+    yaml.dump(inventory, f)
+  return hostfile
+ 
 # ###################################################################
 
 G = ig.Graph.Read_GML('usecase.gml')
-
 
 pre_queue = []
 # Add inventory name
@@ -77,17 +82,16 @@ for node in G.vs:
     node['inventory_name'] = ansible_inventory[name]
 
     # #######
-    if version == '1.26.2':
-      print ('should pre-update {}'.format(name))
+    if version == v_intermediate:
       pre_queue.append(int(node['id']))
 
+# ###################################################################
+print ("#"*80)
+print ("# pre-seq")
 inventory = _inventory(G, pre_queue)
-hosts_file='hosts_pre'
-with open(hosts_file, 'w') as f:
-  yaml.dump(inventory, f)
+hostfile = _dump_hostfile('hosts_pre', inventory)
+_run_playbook(playbook='k8s-update.yaml', inventories=['inventories/blueprint/core/', hostfile], extras=['@params.blueprint.core.yaml', 'update_version={}'.format(v_intermediate)])
 
-_run_playbook(playbook='k8s-update.yaml', inventories=['inventories/blueprint/core/', 'hosts_pre'], extras=['@params.blueprint.core.yaml', 'update_version={}'.format('1.26.2')])
-# #######
 # ###################################################################
 
 
@@ -98,11 +102,10 @@ for sequence in sequences:
     fct = functools.partial(_install, queue, nid)
     _update(G.vs[nid]['kubernetes'], fct)
   print ("#"*80)
+  print ("# seq {}".format(inv))
   for version in sorted(queue.keys()):
     inventory = _inventory(G, queue[version])
-    hosts_file='hosts_{}'.format(inv)
-    with open(hosts_file, 'w') as f:
-      yaml.dump(inventory, f)
+    hostfile = _dump_hostfile('hosts_{}'.format(inv), inventory)
 
-    _run_playbook(playbook='k8s-update.yaml', inventories=['inventories/blueprint/core/', hosts_file], extras=['@params.blueprint.core.yaml', 'update_version={}'.format(version)])
+    _run_playbook(playbook='k8s-update.yaml', inventories=['inventories/blueprint/core/', hostfile], extras=['@params.blueprint.core.yaml', 'update_version={}'.format(version)])
     inv=inv+1
